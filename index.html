@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Traffic Planning — Ford-Fulkerson</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" />
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- ===== Painel lateral ===== -->
+  <aside class="panel" id="panel">
+    <header class="route">
+      <div class="logo"><span>🚗</span></div>
+      <div class="route-points">
+        <div class="rp"><i class="dot-s"></i><span>Estádio do Maracanã</span></div>
+        <div class="rp-line"></div>
+        <div class="rp"><i class="dot-t"></i><span>Praça da Bandeira</span></div>
+      </div>
+    </header>
+
+    <nav class="tabs" id="tabs">
+      <button data-tab="normal" class="active"><b>🚦</b>Normal</button>
+      <button data-tab="a"><b>🚧</b>Interdição</button>
+      <button data-tab="b"><b>🏗️</b>Obra</button>
+      <button data-tab="more"><b>➕</b>Mais</button>
+    </nav>
+
+    <div class="panel-body">
+      <!-- NORMAL -->
+      <section class="tab active" id="tab-normal">
+        <h2>Quantos carros por hora conseguem sair do jogo?</h2>
+        <p class="lead">Aperte o play e veja o <b>algoritmo de Ford-Fulkerson</b> achar, um por um, os caminhos que levam carros do estádio até a Praça da Bandeira, até não sobrar mais espaço nas ruas.</p>
+        <button class="play" id="play-normal"><span class="pi">▶</span><span>Simular situação normal</span></button>
+        <div id="res-normal"></div>
+      </section>
+
+      <!-- CENÁRIO A -->
+      <section class="tab" id="tab-a">
+        <h2>Cenário A — rua interditada</h2>
+        <p class="lead"><b>Você escolhe:</b> toque em qualquer rua do mapa e diga se ela está <b>interditada</b> ou com <b>uma faixa bloqueada</b>. Pode escolher mais de uma.</p>
+        <div id="closures"></div>
+        <button class="play" id="play-a"><span class="pi">▶</span><span>Simular interdição</span></button>
+        <div id="res-a"></div>
+      </section>
+
+      <!-- CENÁRIO B -->
+      <section class="tab" id="tab-b">
+        <h2>Cenário B — obra na rua</h2>
+        <p class="lead">A prefeitura pode alargar <b>uma rua</b> em +X carros/hora. O sistema testa a obra em cada rua que ficou no limite e diz qual dá o <b>maior ganho real</b>.</p>
+        <div class="xpick">
+          <span>Aumento X:</span>
+          <div class="chips" id="b-chips">
+            <button data-x="600" class="active">+600</button>
+            <button data-x="800">+800</button>
+            <button data-x="1600">+1600</button>
+          </div>
+          <input type="number" id="b-x" min="100" step="100" value="600" aria-label="Aumento em carros por hora" />
+        </div>
+        <button class="play" id="play-b"><span class="pi">▶</span><span>Simular obras</span></button>
+        <div id="res-b"></div>
+      </section>
+
+      <!-- MAIS -->
+      <section class="tab" id="tab-more">
+        <h2>Mais análises</h2>
+        <div class="card">
+          <h3>⏱️ Quanto tempo para esvaziar?</h3>
+          <div class="ev-inputs">
+            <label>Público<input type="number" id="ev-pub" step="1000" min="0" /></label>
+            <label>% de carro<input type="number" id="ev-share" step="1" min="0" max="100" /></label>
+            <label>Pessoas/carro<input type="number" id="ev-occ" step="0.1" min="1" /></label>
+          </div>
+          <div class="ev-out" id="ev-out"></div>
+        </div>
+        <div class="card">
+          <h3>🔥 Ruas mais importantes</h3>
+          <p class="small">Quanto o trânsito perde se cada rua fechar sozinha. Toque para ver no mapa.</p>
+          <div id="vuln"></div>
+        </div>
+        <div class="card">
+          <h3>🧠 Como o algoritmo funciona</h3>
+          <div id="tech"></div>
+        </div>
+        <div class="card">
+          <h3>📄 Relatório</h3>
+          <p class="small">Baixa um arquivo com todos os resultados para anexar ao trabalho.</p>
+          <button class="btn" id="btn-report">Baixar relatório</button>
+        </div>
+      </section>
+    </div>
+  </aside>
+
+  <!-- ===== Barra inferior (contador) ===== -->
+  <div class="statusbar" id="statusbar">
+    <div class="sb-car">🚗</div>
+    <div class="sb-main">
+      <div class="sb-num"><b id="sb-flow">0</b><small>carros/hora</small></div>
+      <div class="sb-text" id="sb-text">chegando à Praça da Bandeira</div>
+    </div>
+    <div class="sb-ctrl">
+      <button id="btn-skip" class="sb-btn hidden" title="Pular animação">⏭</button>
+      <button id="btn-speed" class="sb-btn" title="Velocidade da animação">1×</button>
+    </div>
+  </div>
+
+  <div class="legend" id="legend">
+    <div><i style="background:#1ea362"></i>Livre</div>
+    <div><i style="background:#f29900"></i>Lento</div>
+    <div><i style="background:#d93025"></i>No limite</div>
+    <div><i style="background:#b0b8c1"></i>Sem uso</div>
+  </div>
+
+  <div class="hint hidden" id="hint">👆 Toque numa rua para interditar</div>
+  <div id="tooltip" class="tooltip hidden"></div>
+  <div id="toasts"></div>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="js/fordFulkerson.js"></script>
+  <script src="js/network.js"></script>
+  <script src="js/geometry.js"></script>
+  <script src="js/analysis.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
